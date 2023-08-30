@@ -9,6 +9,10 @@ Disclaimer: this is an unofficial script that is NOT supported by the developers
 
 Version History:
 - 2023.08.29.1723: First public release
+- 2023.08.29.2345: FIXED: the IP address and port numbers entered by the user were
+                          ignored and the default values were used
+                   NEW: save the IP address and port number so the user doesn't
+                        have to reenter them when reopening the app
 """
 
 ################################################################################
@@ -17,6 +21,7 @@ Version History:
 #                                                                              #
 ################################################################################
 
+import os
 import requests
 import tkinter as tk
 from CDVR_Support import DEFAULT_PORT_NUMBER, LOOPBACK_ADDRESS, convert_to_epoch_time
@@ -38,7 +43,6 @@ ORANGE = "#FFAD00"
 BACKGROUND_COLOR = BLUE
 IMAGE_URL        = "https://tmsimg.fancybits.co/assets/p9467679_st_h6_aa.jpg"
 LOCAL_IMAGE      = 'art.jpg'
-NEW_JOB_URL      = "http://127.0.0.1:8089/dvr/jobs/new"
 TEXT_COLOR       = ORANGE
 
 # Other constants
@@ -47,7 +51,14 @@ LABEL_POSITION  = {1: 0, 2: 2, 3: 4}
 NORMAL_FONT     = ("Helvetica", 12, "normal")
 OBJECT_POSITION = {1: 1, 2: 3, 3: 5}
 
-# Global variables
+DEFAULT_SERVER_SETTINGS_FILE = 'default_cdvr_server_settings.txt'
+
+################################################################################
+#                                                                              #
+#                               GLOBAL VARIABLES                               #
+#                                                                              #
+################################################################################
+
 server_ip_address  = None
 server_port_number = None
 widgets            = {}
@@ -154,14 +165,23 @@ def start_main_menu():
   ip_address_label = tk.Label(server_info_frame, bg=BACKGROUND_COLOR, text="IP address :", fg=TEXT_COLOR, font=BOLD_FONT)
   ip_address_label.grid(row=0, column=0, sticky='e')
 
-  default_ip_address = tk.StringVar(value=LOOPBACK_ADDRESS)
-  ip_address_entry = tk.Entry(server_info_frame, textvariable=default_ip_address, font=NORMAL_FONT, width=14)
+  read_default_server_settings_from_file()
+  if server_ip_address:
+    initial_ip_address  = server_ip_address
+    initial_port_number = server_port_number
+  else:
+    initial_ip_address  = LOOPBACK_ADDRESS
+    initial_port_number = DEFAULT_PORT_NUMBER
+
+  ip_address = tk.StringVar(value=initial_ip_address)
+  ip_address_entry = tk.Entry(server_info_frame, textvariable=ip_address, font=NORMAL_FONT, width=14)
   ip_address_entry.grid(row=0, column=1, sticky='w')
       
   port_number_label = tk.Label(server_info_frame, bg=BACKGROUND_COLOR, text="Port number :", fg=TEXT_COLOR, font=BOLD_FONT)
   port_number_label.grid(row=0, column=2, sticky='e')
-  default_port_number = tk.StringVar(value=DEFAULT_PORT_NUMBER)
-  port_number_entry = tk.Entry(server_info_frame, textvariable=default_port_number, font=NORMAL_FONT, width=4)
+
+  port_number = tk.StringVar(value=initial_port_number)
+  port_number_entry = tk.Entry(server_info_frame, textvariable=port_number, font=NORMAL_FONT, width=4)
   port_number_entry.grid(row=0, column=3, sticky='w')
 
   connect_button = tk.Button(server_info_frame, text="Connect", font=NORMAL_FONT, \
@@ -391,10 +411,25 @@ def get_program_info():
 
   return program_info
 
+def read_default_server_settings_from_file():
+  global server_ip_address
+  global server_port_number
+
+  if os.path.exists(DEFAULT_SERVER_SETTINGS_FILE):
+    with open(DEFAULT_SERVER_SETTINGS_FILE, 'r') as f:
+      default = f.read()
+    
+    server_ip_address  = default.split(':')[0]
+    server_port_number = default.split(':')[1]
+
 def resize_image(local_image, width=144, height=108):
   resized_image = Image.open(local_image).resize((width, height))
                                                   
   return ImageTk.PhotoImage(resized_image)
+
+def save_default_server_settings_to_file(ip, port):
+  with open(DEFAULT_SERVER_SETTINGS_FILE, 'w') as f:
+    f.write(f'{ip}:{port}')
 
 def update_duration(ignored_argument):
   global widgets
@@ -455,6 +490,7 @@ def update_server_status(ip_address, port_number, status_label, subframe_list, s
     server_ip_address  = ip_address
     server_port_number = port_number
     enable_subframes_and_schedule_button(subframe_list, schedule_button)
+    save_default_server_settings_to_file(server_ip_address, server_port_number)
 
   else:
     status_label.config(text="Not Connected")
@@ -481,7 +517,8 @@ def reset(schedule_button):
 def schedule_recording(schedule_button):
   json_payload = create_json_payload()
 
-  response = requests.post(NEW_JOB_URL, json=json_payload)
+  url = f'http://{server_ip_address}:{server_port_number}/dvr/jobs/new'
+  response = requests.post(url, json=json_payload)
 
   print(response.status_code)
   print(response.reason)
