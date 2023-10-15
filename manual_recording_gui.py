@@ -13,6 +13,8 @@ Version History:
                           ignored and the default values were used
                    NEW: save the IP address and port number so the user doesn't
                         have to reenter them when reopening the app
+- 2023.10.15.1914: NEW: button to create a JSON file with the payload, and
+                        display the command line that can be copied by the user
 """
 
 ################################################################################
@@ -28,7 +30,7 @@ from CDVR_Support import DEFAULT_PORT_NUMBER, LOOPBACK_ADDRESS, convert_to_epoch
 from datetime import datetime, timedelta
 from PIL import Image, ImageTk
 from time import sleep
-from tkinter import font
+from tkinter import END, font
 
 ################################################################################
 #                                                                              #
@@ -156,7 +158,10 @@ def start_main_menu():
   stop_frame = tk.LabelFrame(frame, bg=BACKGROUND_COLOR, text=" Stop Day and Time ", fg=TEXT_COLOR, font=BOLD_FONT)
   stop_frame.grid(row=4, column=0, padx=10, pady=10)
 
-  subframes = (program_info_frame, start_frame, duration_frame, stop_frame)
+  button_frame = tk.LabelFrame(frame, bg=BACKGROUND_COLOR, text=" Actions ", fg=TEXT_COLOR, font=BOLD_FONT)
+  button_frame.grid(row=5, column=0, padx=10, pady=10)
+
+  subframes = (program_info_frame, start_frame, duration_frame, stop_frame, button_frame)
 
   #
   # Frame: Server Connection
@@ -186,7 +191,7 @@ def start_main_menu():
 
   connect_button = tk.Button(server_info_frame, text="Connect", font=NORMAL_FONT, \
         command=lambda:update_server_status(ip_address_entry.get(), port_number_entry.get(), \
-                                            server_status_value, subframes, schedule_button))
+                                            server_status_value, subframes, (json_button, schedule_button)))
   connect_button.grid(row=0, column=4)
 
   server_status_label = tk.Label(server_info_frame, bg=BACKGROUND_COLOR, text="Status :", fg=TEXT_COLOR, font=BOLD_FONT)
@@ -280,13 +285,28 @@ def start_main_menu():
   stop_time_widget.set_time({'hour': initial_stop.hour, 'minutes': initial_stop.minute, 'seconds': initial_stop.second})
 
   #
+  # JSON button
+  #
+
+  json_button = tk.Button(button_frame, text="Create JSON File", font=NORMAL_FONT, bd=3, command=lambda:save_json_payload_to_file(cli_entry))
+  json_button.grid(row=0, column=0, padx=15, pady=10, sticky="w")
+  
+  #
   # Schedule button
   #
 
-  schedule_button = tk.Button(frame, text="Schedule", font=NORMAL_FONT, bd=3, command=lambda:schedule_recording(schedule_button))
-  schedule_button.grid(row=5, column=0, padx=5, pady=10)
+  schedule_button = tk.Button(button_frame, text="Schedule Manual Recording", font=NORMAL_FONT, bd=3, command=lambda:schedule_recording(schedule_button))
+  schedule_button.grid(row=0, column=1, padx=15, pady=10, sticky="e")
+
+  #
+  # Entry to display the CLI and the user can copy
+  #
+  cli_entry = tk.Entry(button_frame, font=NORMAL_FONT, width=52, justify='left')
+  cli_entry.grid(row=1, columnspan=2, padx=15, pady=5, sticky="w")
+  cli_entry.insert(0, '(the command will be displayed here)')
+
   
-  disable_subframes_and_schedule_button(subframes, schedule_button)
+  disable_subframes_and_buttons(subframes, (json_button, schedule_button))
   
   # Launch the window    
   window_main_menu.mainloop()
@@ -387,19 +407,21 @@ def download_image(url, filename):
     else:
         print("Failed to download image")
 
-def enable_subframes_and_schedule_button(subframes, button):
+def enable_subframes_and_buttons(subframes, buttons):
   for frame in subframes:
     for child in frame.winfo_children():
       child.configure(state='normal')
 
-  button.config(state='normal')
+  for button in buttons:
+    button.config(state='normal')
 
-def disable_subframes_and_schedule_button(subframes, button):
+def disable_subframes_and_buttons(subframes, buttons):
   for frame in subframes:
     for child in frame.winfo_children():
       child.configure(state='disable')
-
-  button.config(state='disable')
+ 
+  for button in buttons:
+    button.config(state='disable')
 
 def get_program_info():
   program_info = {}
@@ -474,7 +496,7 @@ def load_image(image_url, image_label):
   image_label.configure(image=tk_image)
   image_label.image = tk_image
 
-def update_server_status(ip_address, port_number, status_label, subframe_list, schedule_button):
+def update_server_status(ip_address, port_number, status_label, subframe_list, buttons):
   global server_ip_address
   global server_port_number
 
@@ -489,12 +511,12 @@ def update_server_status(ip_address, port_number, status_label, subframe_list, s
     status_label.config(text="Connected")
     server_ip_address  = ip_address
     server_port_number = port_number
-    enable_subframes_and_schedule_button(subframe_list, schedule_button)
+    enable_subframes_and_buttons(subframe_list, buttons)
     save_default_server_settings_to_file(server_ip_address, server_port_number)
 
   else:
     status_label.config(text="Not Connected")
-    disable_subframes_and_schedule_button(subframe_list, schedule_button)
+    disable_subframes_and_buttons(subframe_list, buttons)
 
 def reset(schedule_button):
   global widgets
@@ -514,8 +536,23 @@ def reset(schedule_button):
 
   schedule_button.config(text='Schedule')
 
+def save_json_payload_to_file(cli_field):
+  json_payload = create_json_payload()
+
+  title = json_payload['Airing']['Title'].lower().replace(' ', '_')
+  episode_title = json_payload['Airing']['EpisodeTitle'].lower().replace(' ', '_')
+  filename = title + '_' + episode_title + '.json'
+
+  with open(filename, 'w') as json_file:
+    json_file.write(str(json_payload))
+
+  cli_field.delete(0, END)
+  cli_field.insert(0, f'curl -XPOST --data-binary @{filename} "{server_ip_address}:{server_port_number}/dvr/jobs/new"')
+
 def schedule_recording(schedule_button):
   json_payload = create_json_payload()
+
+  print(json_payload)
 
   url = f'http://{server_ip_address}:{server_port_number}/dvr/jobs/new'
   response = requests.post(url, json=json_payload)
@@ -526,8 +563,6 @@ def schedule_recording(schedule_button):
 
   schedule_button.config(text=response.reason)
   schedule_button.config(command=lambda:reset(schedule_button))
-
-
 
 ################################################################################
 #                                                                              #
