@@ -15,6 +15,8 @@ Version History:
                         have to reenter them when reopening the app
 - 2023.10.15.1914: NEW: button to create a JSON file with the payload, and
                         display the command line that can be copied by the user
+- 2023.10.17.2230: IMPROVED: changed the layout so that the window is now wider
+                             and not as tall. It will look better on some screens
 """
 
 ################################################################################
@@ -49,9 +51,9 @@ TEXT_COLOR       = ORANGE
 
 # Other constants
 BOLD_FONT       = ("Helvetica", 12, "bold")
-LABEL_POSITION  = {1: 0, 2: 2, 3: 4}
+LABEL_POSITION  = {1: 0, 2: 2, 3: 4, 4: 6, 5: 8, 6: 10}
 NORMAL_FONT     = ("Helvetica", 12, "normal")
-OBJECT_POSITION = {1: 1, 2: 3, 3: 5}
+OBJECT_POSITION = {1: 1, 2: 3, 3: 5, 4: 7, 5: 9, 6: 11}
 
 DEFAULT_SERVER_SETTINGS_FILE = 'default_cdvr_server_settings.txt'
 
@@ -86,7 +88,7 @@ class DropDownSelector():
     self.create_dropdown()
 
   def create_label(self):
-    label = tk.Label(self.frame, bg = BACKGROUND_COLOR, text = f"{self.name} :", fg = TEXT_COLOR, font = BOLD_FONT)
+    label = tk.Label(self.frame, bg = BACKGROUND_COLOR, text = f"{self.name}", fg = TEXT_COLOR, font = BOLD_FONT)
     label.grid(row = self.row, column = LABEL_POSITION[self.order], padx = 5, pady = 10, sticky = 'e')
 
   def create_dropdown(self):
@@ -103,9 +105,9 @@ class DropDownSelector():
 class DateWidget():
   def __init__(self, frame, action):
     self.action = action
-    self.day   = DropDownSelector(frame, "Day",   range(1, 32), 0, 2, action)
-    self.month = DropDownSelector(frame, "Month", range(1, 13), 0, 1, action)
-    self.year  = DropDownSelector(frame, "Year",  (2023, 2024), 0, 3, action)
+    self.day   = DropDownSelector(frame, "/",   range(1, 32), 0, 2, action)
+    self.month = DropDownSelector(frame, "Day:", range(1, 13), 0, 1, action)
+    self.year  = DropDownSelector(frame, "/",  (2023, 2024), 0, 3, action)
 
   def get_date(self):
     return {'year': self.year.get_value(), 'month': self.month.get_value(), 'day': self.day.get_value()}
@@ -118,9 +120,9 @@ class DateWidget():
 class TimeWidget():
   def __init__(self, frame, action):
     self.action  = action
-    self.hour    = DropDownSelector(frame, "Hour",    range(0, 24), 1, 1, action)
-    self.minutes = DropDownSelector(frame, "Minutes", range(0, 60), 1, 2, action)
-    self.seconds = DropDownSelector(frame, "Seconds", range(0, 60), 1, 3, action)
+    self.hour    = DropDownSelector(frame, "Time:",    range(0, 24), 0, 4, action)
+    self.minutes = DropDownSelector(frame, ":", range(0, 60), 0, 5, action)
+    self.seconds = DropDownSelector(frame, ":", range(0, 60), 0, 6, action)
 
   def get_time(self):
     return {'hour': self.hour.get_value(), 'minutes': self.minutes.get_value(), 'seconds': self.seconds.get_value()}
@@ -149,13 +151,13 @@ def start_main_menu():
   program_info_frame = tk.LabelFrame(frame, bg=BACKGROUND_COLOR, text=" Program Info ", fg=TEXT_COLOR, font=BOLD_FONT)
   program_info_frame.grid(row=1, column=0, padx=10, pady=10)
 
-  start_frame = tk.LabelFrame(frame, bg=BACKGROUND_COLOR, text=" Start Day and Time ", fg=TEXT_COLOR, font=BOLD_FONT)
+  start_frame = tk.LabelFrame(frame, bg=BACKGROUND_COLOR, text=" Start ", fg=TEXT_COLOR, font=BOLD_FONT)
   start_frame.grid(row=2, column=0, padx=10, pady=10)
 
   duration_frame = tk.LabelFrame(frame, bg=BACKGROUND_COLOR, text=" Duration ", fg=TEXT_COLOR, font=BOLD_FONT)
   duration_frame.grid(row=3, column=0, padx=10, pady=10)
 
-  stop_frame = tk.LabelFrame(frame, bg=BACKGROUND_COLOR, text=" Stop Day and Time ", fg=TEXT_COLOR, font=BOLD_FONT)
+  stop_frame = tk.LabelFrame(frame, bg=BACKGROUND_COLOR, text=" Stop ", fg=TEXT_COLOR, font=BOLD_FONT)
   stop_frame.grid(row=4, column=0, padx=10, pady=10)
 
   button_frame = tk.LabelFrame(frame, bg=BACKGROUND_COLOR, text=" Actions ", fg=TEXT_COLOR, font=BOLD_FONT)
@@ -195,9 +197,9 @@ def start_main_menu():
   connect_button.grid(row=0, column=4)
 
   server_status_label = tk.Label(server_info_frame, bg=BACKGROUND_COLOR, text="Status :", fg=TEXT_COLOR, font=BOLD_FONT)
-  server_status_label.grid(row=1, column=0, sticky='e')
+  server_status_label.grid(row=0, column=5, sticky='e')
   server_status_value = tk.Label(server_info_frame, text="No Connection", font=NORMAL_FONT)
-  server_status_value.grid(row=1, column=1, sticky='w')
+  server_status_value.grid(row=0, column=6, sticky='w')
   
   # Space out all the widgets
   for widget in server_info_frame.winfo_children():
@@ -233,17 +235,17 @@ def start_main_menu():
   channel_entry.insert(0, '6002')
   widgets['channel_number'] = channel_entry
 
-  program_name_entry = tk.Entry(program_info_frame, font=NORMAL_FONT, width=34, justify='left')
+  program_name_entry = tk.Entry(program_info_frame, font=NORMAL_FONT, width=53, justify='left')
   program_name_entry.grid(row=1, column=1, padx=10, pady=5, sticky="w")
   program_name_entry.insert(0, 'Manual Recordings')
   widgets['program_name'] = program_name_entry
 
-  episode_name_entry = tk.Entry(program_info_frame, font=NORMAL_FONT, width=34, justify='left')
+  episode_name_entry = tk.Entry(program_info_frame, font=NORMAL_FONT, width=53, justify='left')
   episode_name_entry.grid(row=2, column=1, padx=10, pady=5, sticky="w")
   episode_name_entry.insert(0, 'Manual Recording')
   widgets['episode_name'] = episode_name_entry
 
-  image_url_entry = tk.Entry(program_info_frame, font=NORMAL_FONT, width=34, justify='left')
+  image_url_entry = tk.Entry(program_info_frame, font=NORMAL_FONT, width=53, justify='left')
   image_url_entry.grid(row=3, column=1, padx=10, pady=5, sticky="w")
   image_url_entry.insert(0, IMAGE_URL)
   widgets['image_url'] = image_url_entry
@@ -301,7 +303,7 @@ def start_main_menu():
   #
   # Entry to display the CLI and the user can copy
   #
-  cli_entry = tk.Entry(button_frame, font=NORMAL_FONT, width=52, justify='left')
+  cli_entry = tk.Entry(button_frame, font=NORMAL_FONT, width=80, justify='left')
   cli_entry.grid(row=1, columnspan=2, padx=15, pady=5, sticky="w")
   cli_entry.insert(0, '(the command will be displayed here)')
 
