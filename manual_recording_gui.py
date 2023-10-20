@@ -17,6 +17,7 @@ Version History:
                         display the command line that can be copied by the user
 - 2023.10.17.2230: IMPROVED: changed the layout so that the window is now wider
                              and not as tall. It will look better on some screens
+- 2023.10.20.0010: FIXED: the JSON payload was written to the file in the wrong format
 """
 
 ################################################################################
@@ -25,6 +26,7 @@ Version History:
 #                                                                              #
 ################################################################################
 
+import json
 import os
 import requests
 import tkinter as tk
@@ -536,7 +538,7 @@ def reset(schedule_button):
   widgets['stop_date'].set_date({'year': initial_stop.year, 'month': initial_stop.month, 'day': initial_stop.day})
   widgets['stop_time'].set_time({'hour': initial_stop.hour, 'minutes': initial_stop.minute, 'seconds': initial_stop.second})
 
-  schedule_button.config(text='Schedule')
+  schedule_button.config(text='Schedule Manual Recording')
 
 def save_json_payload_to_file(cli_field):
   json_payload = create_json_payload()
@@ -546,7 +548,7 @@ def save_json_payload_to_file(cli_field):
   filename = title + '_' + episode_title + '.json'
 
   with open(filename, 'w') as json_file:
-    json_file.write(str(json_payload))
+    json.dump(json_payload, json_file)
 
   cli_field.delete(0, END)
   cli_field.insert(0, f'curl -XPOST --data-binary @{filename} "{server_ip_address}:{server_port_number}/dvr/jobs/new"')
